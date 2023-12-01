@@ -1,0 +1,43 @@
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+import scipy
+source1 =scipy.io.wavfile.read(r"C:\Users\jibri\Downloads\OSR_us_000_0019_8k.wav")
+source2 = scipy.io.wavfile.read(r"C:\Users\jibri\Downloads\OSR_fr_000_0044_8k.wav")
+
+source1 = source1[1]
+source2 = source2[1][:source1.shape[0]]
+sources = np.vstack(([source1],[source2]))
+
+A = np.array([[1,1],[0,1]])
+
+donnees = A@sources
+covar = np.cov(donnees)
+
+vals, vecs = np.linalg.eig(covar)
+
+inv_sqrt_vals = np.diag(1 / np.sqrt(vals))
+
+covar_sources_inv_sqrt = vecs @ inv_sqrt_vals @ np.transpose(vecs)
+
+Z = covar_sources_inv_sqrt@donnees
+
+theta_values = np.linspace(0,2*np.pi,num=200)
+kurtosis_list = []
+for theta in theta_values :
+    X_estim = np.array([[np.cos(theta),-np.sin(theta)],[np.sin(theta),np.cos(theta)]])@Z
+    kurtosis = np.mean((X_estim**4))-3
+    kurtosis_list.append(kurtosis)
+plt.plot(theta_values,kurtosis_list)
+plt.show()
+theta = 2.1
+X_estim = np.array([[np.cos(theta),-np.sin(theta)],[np.sin(theta),np.cos(theta)]])@Z
+sns.scatterplot(x=X_estim[0],y=X_estim[1])
+plt.show()
+
+audio1 = X_estim[0]*100
+audio2 = X_estim[1]*100
+
+scipy.io.wavfile.write(r"C:\Users\jibri\OneDrive\Bureau\CentraleSupélec\2A\Électifs\TDSA\audio1.wav",rate=8000,data=audio1.astype(np.int16))
+scipy.io.wavfile.write(r"C:\Users\jibri\OneDrive\Bureau\CentraleSupélec\2A\Électifs\TDSA\audio2.wav",rate=8000,data=audio2.astype(np.int16))
+

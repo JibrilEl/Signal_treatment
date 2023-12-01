@@ -1,0 +1,50 @@
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+import scipy
+
+source1 = scipy.io.wavfile.read(r"C:\Users\jibri\Downloads\OSR_us_000_0019_8k.wav")
+source2 = scipy.io.wavfile.read(r"C:\Users\jibri\Downloads\OSR_fr_000_0044_8k.wav")
+source3 = scipy.io.wavfile.read(r"C:\Users\jibri\Downloads\OSR_cn_000_0072_8k.wav")
+source4 = scipy.io.wavfile.read(r"C:\Users\jibri\Downloads\OSR_in_000_0062_16k.wav")
+
+source3 = source3[1][:source3[1].shape[0]]
+source1 = source1[1][:source3.shape[0]]
+source2 = source2[1][:source3.shape[0]]
+source4 = source4[1][:source3.shape[0]]
+i=0
+
+A = np.array([[17,51,21,30],[0.5,10,11,12],[71,80,51,61],[17,18,20,122]])
+
+sources = np.vstack(([source1],[source2],[source3],[source4]))
+
+donnees = A@sources
+
+covar = np.cov(donnees)
+
+vals, vecs = np.linalg.eig(covar)
+
+inv_sqrt_vals = np.diag(1 / np.sqrt(vals))
+
+covar_sources_inv_sqrt = vecs @ inv_sqrt_vals @ np.transpose(vecs)
+
+Z = covar_sources_inv_sqrt@donnees
+
+w = np.array([1,0,0,0])/np.linalg.norm(np.array([1,0,0,0]),ord=2)
+def w_plus_calculation(w,x):
+    first_term=x*np.tanh(np.transpose(w)@x)
+    second_term=1-np.tanh(np.transpose(w)@x)**2
+    w_plus=np.mean(first_term)-np.mean(second_term)*w
+    return(w_plus/np.linalg.norm(w_plus))
+
+while np.linalg.norm(w-w_plus_calculation(w,Z),ord=1)>5*10**(-1) and i <150:
+    w=w_plus_calculation(w,Z)
+    i+=1
+    print(i)
+    print(w)
+print("Vecteur poids :",w)
+print("Poids appliqué aux données",np.transpose(w)@Z)
+
+audio1 = np.transpose(w)@Z*100
+
+scipy.io.wavfile.write(r"C:\Users\jibri\OneDrive\Bureau\CentraleSupélec\2A\Électifs\TDSA\multi_voix\audio1.wav",rate=8000,data=audio1.astype(np.int16))
